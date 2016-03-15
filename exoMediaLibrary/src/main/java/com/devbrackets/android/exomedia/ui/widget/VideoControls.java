@@ -44,6 +44,8 @@ import com.devbrackets.android.exomedia.util.Repeater;
 import java.util.LinkedList;
 import java.util.List;
 
+import hugo.weaving.DebugLog;
+
 /**
  * This is a simple abstraction for the EMVideoView to have a single "View" to add
  * or remove for the Default Video Controls.
@@ -707,6 +709,7 @@ public abstract class VideoControls extends RelativeLayout {
             return true;
         }
 
+        @DebugLog
         @Override
         public boolean onSeekEnded(int seekTime) {
             if (videoView == null) {

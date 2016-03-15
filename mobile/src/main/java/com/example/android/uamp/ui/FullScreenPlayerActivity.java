@@ -48,6 +48,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import hugo.weaving.DebugLog;
+
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 
@@ -93,6 +95,8 @@ public class FullScreenPlayerActivity extends ActionBarCastActivity {
     private PlaybackStateCompat mLastPlaybackState;
 
     private final MediaControllerCompat.Callback mCallback = new MediaControllerCompat.Callback() {
+
+        @DebugLog
         @Override
         public void onPlaybackStateChanged(@NonNull PlaybackStateCompat state) {
             LogHelper.d(TAG, "onPlaybackstate changed", state);

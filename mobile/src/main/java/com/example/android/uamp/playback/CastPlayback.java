@@ -37,6 +37,8 @@ import com.google.android.libraries.cast.companionlibrary.cast.exceptions.Transi
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import hugo.weaving.DebugLog;
+
 import static android.support.v4.media.session.MediaSessionCompat.QueueItem;
 
 /**
@@ -69,7 +71,7 @@ public class CastPlayback implements Playback {
     private int mState;
     /** Callback for making completion/error calls on */
     private Callback mCallback;
-    private volatile int mCurrentPosition;
+    private volatile long mCurrentPosition;
     private volatile String mCurrentMediaId;
 
     public CastPlayback(MusicProvider musicProvider) {
@@ -96,7 +98,7 @@ public class CastPlayback implements Playback {
     }
 
     @Override
-    public int getCurrentStreamPosition() {
+    public long getCurrentStreamPosition() {
         if (!VideoCastManager.getInstance().isConnected()) {
             return mCurrentPosition;
         }
@@ -109,13 +111,18 @@ public class CastPlayback implements Playback {
     }
 
     @Override
-    public void setCurrentStreamPosition(int pos) {
+    public void setCurrentStreamPosition(long pos) {
+        markCurrentPositionCastPlayback(pos);
+    }
+
+    @DebugLog
+    private void markCurrentPositionCastPlayback(long pos) {
         this.mCurrentPosition = pos;
     }
 
     @Override
     public void updateLastKnownStreamPosition() {
-        mCurrentPosition = getCurrentStreamPosition();
+        markCurrentPositionCastPlayback(getCurrentStreamPosition());
     }
 
     @Override
@@ -141,7 +148,7 @@ public class CastPlayback implements Playback {
             VideoCastManager manager = VideoCastManager.getInstance();
             if (manager.isRemoteMediaLoaded()) {
                 manager.pause();
-                mCurrentPosition = (int) manager.getCurrentMediaPosition();
+                markCurrentPositionCastPlayback((int) manager.getCurrentMediaPosition());
             } else {
                 loadMedia(mCurrentMediaId, false);
             }
@@ -165,9 +172,9 @@ public class CastPlayback implements Playback {
         try {
             if (VideoCastManager.getInstance().isRemoteMediaLoaded()) {
                 VideoCastManager.getInstance().seek(position);
-                mCurrentPosition = position;
+                markCurrentPositionCastPlayback(position);
             } else {
-                mCurrentPosition = position;
+                markCurrentPositionCastPlayback(position);
                 loadMedia(mCurrentMediaId, false);
             }
         } catch (TransientNetworkDisconnectionException | NoConnectionException |
@@ -224,12 +231,12 @@ public class CastPlayback implements Playback {
         }
         if (!TextUtils.equals(mediaId, mCurrentMediaId)) {
             mCurrentMediaId = mediaId;
-            mCurrentPosition = 0;
+            markCurrentPositionCastPlayback(0);
         }
         JSONObject customData = new JSONObject();
         customData.put(ITEM_ID, mediaId);
         MediaInfo media = toCastMediaMetadata(track, customData);
-        VideoCastManager.getInstance().loadMedia(media, autoPlay, mCurrentPosition, customData);
+        VideoCastManager.getInstance().loadMedia(media, autoPlay, (int) mCurrentPosition, customData);
     }
 
     /**
@@ -272,6 +279,7 @@ public class CastPlayback implements Playback {
                 .build();
     }
 
+    @DebugLog
     private void setMetadataFromRemote() {
         // Sync: We get the customData from the remote media information and update the local
         // metadata if it happens to be different from the one we are currently using.

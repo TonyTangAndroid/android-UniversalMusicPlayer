@@ -30,6 +30,8 @@ import com.example.android.uamp.utils.LogHelper;
 import com.example.android.uamp.utils.MediaIDHelper;
 import com.example.android.uamp.utils.WearHelper;
 
+import hugo.weaving.DebugLog;
+
 /**
  * Manage the interactions among the container service, the queue manager and the actual playback.
  */
@@ -227,7 +229,7 @@ public class PlaybackManager implements Playback.Callback {
         }
         // suspend the current one.
         int oldState = mPlayback.getState();
-        int pos = mPlayback.getCurrentStreamPosition();
+        long pos = mPlayback.getCurrentStreamPosition();
         String currentMediaId = mPlayback.getCurrentMediaId();
         mPlayback.stop(false);
         playback.setCallback(this);
@@ -291,6 +293,7 @@ public class PlaybackManager implements Playback.Callback {
             handlePlayRequest();
         }
 
+        @DebugLog
         @Override
         public void onPause() {
             LogHelper.d(TAG, "pause. current state=" + mPlayback.getState());

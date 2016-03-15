@@ -40,6 +40,8 @@ import com.devbrackets.android.exomedia.type.MediaSourceType;
 import com.google.android.exoplayer.audio.AudioCapabilities;
 import com.google.android.exoplayer.audio.AudioCapabilitiesReceiver;
 
+import hugo.weaving.DebugLog;
+
 /**
  * A {@link VideoViewApi} implementation that uses the ExoPlayer
  * as the backing media player.
@@ -84,6 +86,7 @@ public class ExoVideoView extends AspectTextureView implements VideoViewApi, Aud
         setVideoUri(uri, builder);
     }
 
+    @DebugLog
     @Override
     public void setVideoUri(@Nullable Uri uri, @Nullable RenderBuilder renderBuilder) {
         playRequested = false;
@@ -125,6 +128,7 @@ public class ExoVideoView extends AspectTextureView implements VideoViewApi, Aud
         return true;
     }
 
+    @DebugLog
     @Override
     public void seekTo(@IntRange(from = 0) int milliseconds) {
         emExoPlayer.seekTo(milliseconds);

@@ -16,6 +16,7 @@ dependencies {
 android {
     compileSdkVersion 23
     buildToolsVersion '23.0.2'
+    defaultPublishConfig "debug"
 
     defaultConfig {
         minSdkVersion 17

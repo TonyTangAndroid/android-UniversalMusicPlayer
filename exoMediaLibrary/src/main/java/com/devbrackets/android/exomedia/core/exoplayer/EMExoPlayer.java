@@ -62,6 +62,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import hugo.weaving.DebugLog;
+
 public class EMExoPlayer implements
         ExoPlayer.Listener,
         ChunkSampleSource.EventListener,
@@ -207,6 +209,7 @@ public class EMExoPlayer implements
         prepared = false;
     }
 
+    @DebugLog
     public void prepare() {
         if (prepared || rendererBuilder == null) {
             return;
@@ -241,6 +244,7 @@ public class EMExoPlayer implements
         rendererBuildingState = RenderBuildingState.BUILT;
     }
 
+    @DebugLog
     public void onRenderersError(Exception e) {
         if (internalErrorListener != null) {
             internalErrorListener.onRendererInitializationError(e);
@@ -254,16 +258,19 @@ public class EMExoPlayer implements
         reportPlayerState();
     }
 
+    @DebugLog
     public void stop() {
         player.setPlayWhenReady(false);
         player.stop();
     }
 
+    @DebugLog
     public void setPlayWhenReady(boolean playWhenReady) {
         player.setPlayWhenReady(playWhenReady);
         stayAwake(playWhenReady);
     }
 
+    @DebugLog
     public void seekTo(long positionMs) {
         player.seekTo(positionMs);
     }
@@ -273,6 +280,7 @@ public class EMExoPlayer implements
    *
    * @return {@code true} if the media was successfully restarted, otherwise {@code false}
    */
+  @DebugLog
   public boolean restart() {
         int playbackState = getPlaybackState();
         if(playbackState != ExoPlayer.STATE_IDLE && playbackState != ExoPlayer.STATE_ENDED) {
@@ -394,6 +402,7 @@ public class EMExoPlayer implements
         }
     }
 
+    @DebugLog
     @Override
     public void onPlayerStateChanged(boolean playWhenReady, int state) {
         reportPlayerState();
@@ -557,6 +566,7 @@ public class EMExoPlayer implements
         //Purposefully left blank
     }
 
+    @DebugLog
     private void reportPlayerState() {
         boolean playWhenReady = player.getPlayWhenReady();
         int playbackState = getPlaybackState();

@@ -18,13 +18,11 @@ package com.devbrackets.android.exomedia;
 
 import android.content.Context;
 import android.net.Uri;
-import android.os.Build;
 import android.support.annotation.FloatRange;
 
 import com.devbrackets.android.exomedia.core.EMListenerMux;
 import com.devbrackets.android.exomedia.core.api.MediaPlayerApi;
 import com.devbrackets.android.exomedia.core.audio.ExoMediaPlayer;
-import com.devbrackets.android.exomedia.core.audio.NativeMediaPlayer;
 import com.devbrackets.android.exomedia.core.builder.RenderBuilder;
 import com.devbrackets.android.exomedia.core.exoplayer.EMExoPlayer;
 import com.devbrackets.android.exomedia.listener.OnBufferUpdateListener;
@@ -32,7 +30,8 @@ import com.devbrackets.android.exomedia.listener.OnCompletionListener;
 import com.devbrackets.android.exomedia.listener.OnErrorListener;
 import com.devbrackets.android.exomedia.listener.OnPreparedListener;
 import com.devbrackets.android.exomedia.listener.OnSeekCompletionListener;
-import com.devbrackets.android.exomedia.util.EMDeviceUtil;
+
+import hugo.weaving.DebugLog;
 
 /**
  * An AudioPlayer that uses the ExoPlayer as the backing architecture.  If the current device
@@ -44,18 +43,12 @@ import com.devbrackets.android.exomedia.util.EMDeviceUtil;
  */
 @SuppressWarnings("UnusedDeclaration")
 public class EMAudioPlayer {
-    private EMListenerMux listenerMux;
-
     protected MediaPlayerApi mediaPlayerImpl;
+    private EMListenerMux listenerMux;
     private int overriddenDuration = -1;
 
     public EMAudioPlayer(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN  && EMDeviceUtil.isDeviceCTSCompliant()) {
-            mediaPlayerImpl = new ExoMediaPlayer(context);
-        } else {
-            mediaPlayerImpl = new NativeMediaPlayer(context);
-        }
-
+        mediaPlayerImpl = new ExoMediaPlayer(context);
         listenerMux = new EMListenerMux(new MuxNotifier());
         mediaPlayerImpl.setListenerMux(listenerMux);
     }
@@ -80,7 +73,7 @@ public class EMAudioPlayer {
      * an absolute local path (e.g. file://)
      *
      * @param context The applications context that owns the media
-     * @param uri The Uri representing the path to the audio item
+     * @param uri     The Uri representing the path to the audio item
      */
     public void setDataSource(Context context, Uri uri) {
         mediaPlayerImpl.setDataSource(context, uri);
@@ -91,8 +84,8 @@ public class EMAudioPlayer {
      * Sets the source path for the audio item.  This path can be a web address (e.g. http://) or
      * an absolute local path (e.g. file://)
      *
-     * @param context The applications context that owns the media
-     * @param uri The Uri representing the path to the audio item
+     * @param context       The applications context that owns the media
+     * @param uri           The Uri representing the path to the audio item
      * @param renderBuilder The RenderBuilder to use for audio playback
      */
     public void setDataSource(Context context, Uri uri, RenderBuilder renderBuilder) {
@@ -107,7 +100,7 @@ public class EMAudioPlayer {
     /**
      * Sets the volume level for the audio playback.
      *
-     * @param leftVolume The volume range [0.0 - 1.0]
+     * @param leftVolume  The volume range [0.0 - 1.0]
      * @param rightVolume The volume range [0.0 - 1.0]
      */
     public void setVolume(@FloatRange(from = 0.0, to = 1.0) float leftVolume, @FloatRange(from = 0.0, to = 1.0) float rightVolume) {
@@ -116,7 +109,7 @@ public class EMAudioPlayer {
 
     /**
      * Set the low-level power management behavior for this EMAudioPlayer.
-     *
+     * <p>
      * <p>This function has the EMAudioPlayer access the low-level power manager
      * service to control the device's power usage while playing is occurring.
      * The parameter is a combination of {@link android.os.PowerManager} wake flags.
@@ -150,7 +143,9 @@ public class EMAudioPlayer {
      *
      * @param milliSeconds The time to move the playback to
      */
-    public void seekTo(int milliSeconds) {
+
+    @DebugLog
+    public void seekTo(long milliSeconds) {
         if (milliSeconds > getDuration()) {
             milliSeconds = getDuration();
         }
@@ -171,6 +166,7 @@ public class EMAudioPlayer {
      * Starts the playback for the audio item specified in {@link #setDataSource(android.content.Context, android.net.Uri)}.
      * This should be called after the AudioPlayer is correctly prepared (see {@link #setOnPreparedListener(OnPreparedListener)})
      */
+    @DebugLog
     public void start() {
         mediaPlayerImpl.start();
     }
@@ -178,6 +174,7 @@ public class EMAudioPlayer {
     /**
      * If an audio item is currently in playback, it will be paused
      */
+    @DebugLog
     public void pause() {
         mediaPlayerImpl.pause();
     }
@@ -200,7 +197,7 @@ public class EMAudioPlayer {
      *
      * @return The millisecond duration of the video
      */
-    public int getDuration() {
+    public long getDuration() {
         if (overriddenDuration >= 0) {
             return overriddenDuration;
         }
@@ -226,7 +223,7 @@ public class EMAudioPlayer {
      *
      * @return The millisecond value for the current position
      */
-    public int getCurrentPosition() {
+    public long getCurrentPosition() {
         return mediaPlayerImpl.getCurrentPosition();
     }
 
@@ -294,6 +291,10 @@ public class EMAudioPlayer {
         pause();
     }
 
+    public void setPlayWhenReady(boolean playWhenReady) {
+        mediaPlayerImpl.setPlayWhenReady(playWhenReady);
+    }
+
     private class MuxNotifier extends EMListenerMux.EMListenerMuxNotifier {
         @Override
         public boolean shouldNotifyCompletion(long endLeeway) {
@@ -311,7 +312,7 @@ public class EMAudioPlayer {
 
         @Override
         public void onMediaPlaybackEnded() {
-           onPlaybackEnded();
+            onPlaybackEnded();
         }
 
         @Override

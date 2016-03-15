@@ -52,6 +52,8 @@ import com.devbrackets.android.exomedia.util.EMDeviceUtil;
 import com.devbrackets.android.exomedia.util.Repeater;
 import com.devbrackets.android.exomedia.util.StopWatch;
 
+import hugo.weaving.DebugLog;
+
 /**
  * This is a support VideoView that will use the standard VideoView on devices below
  * JellyBean.  On devices with JellyBean and up we will use the ExoPlayer in order to
@@ -434,6 +436,7 @@ public class EMVideoView extends RelativeLayout {
      *
      * @param milliSeconds The time to move the playback to
      */
+    @DebugLog
     public void seekTo(int milliSeconds) {
         videoViewImpl.seekTo(milliSeconds);
     }

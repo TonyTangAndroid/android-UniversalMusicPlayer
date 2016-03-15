@@ -51,6 +51,8 @@ import com.google.android.libraries.cast.companionlibrary.cast.callbacks.VideoCa
 import java.lang.ref.WeakReference;
 import java.util.List;
 
+import hugo.weaving.DebugLog;
+
 import static com.example.android.uamp.utils.MediaIDHelper.MEDIA_ID_ROOT;
 
 /**
@@ -163,6 +165,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
             mPlaybackManager.switchToPlayback(playback, true);
         }
 
+        @DebugLog
         @Override
         public void onDisconnectionReason(int reason) {
             LogHelper.d(TAG, "onDisconnectionReason");

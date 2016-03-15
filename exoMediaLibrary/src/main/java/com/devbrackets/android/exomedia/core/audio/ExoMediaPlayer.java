@@ -26,15 +26,17 @@ import android.support.annotation.IntRange;
 
 import com.devbrackets.android.exomedia.BuildConfig;
 import com.devbrackets.android.exomedia.core.EMListenerMux;
+import com.devbrackets.android.exomedia.core.api.MediaPlayerApi;
 import com.devbrackets.android.exomedia.core.builder.DashRenderBuilder;
 import com.devbrackets.android.exomedia.core.builder.HlsRenderBuilder;
 import com.devbrackets.android.exomedia.core.builder.RenderBuilder;
 import com.devbrackets.android.exomedia.core.builder.SmoothStreamRenderBuilder;
 import com.devbrackets.android.exomedia.core.exoplayer.EMExoPlayer;
-import com.devbrackets.android.exomedia.core.api.MediaPlayerApi;
 import com.devbrackets.android.exomedia.type.MediaSourceType;
 import com.google.android.exoplayer.audio.AudioCapabilities;
 import com.google.android.exoplayer.audio.AudioCapabilitiesReceiver;
+
+import hugo.weaving.DebugLog;
 
 /**
  * A {@link MediaPlayerApi} implementation that uses the ExoPlayer
@@ -71,6 +73,7 @@ public class ExoMediaPlayer implements MediaPlayerApi, AudioCapabilitiesReceiver
         setDataSource(context, uri, builder);
     }
 
+    @DebugLog
     @Override
     public void setDataSource(Context context, Uri uri, RenderBuilder renderBuilder) {
         if (uri == null) {
@@ -101,8 +104,9 @@ public class ExoMediaPlayer implements MediaPlayerApi, AudioCapabilitiesReceiver
         emExoPlayer.setVolume((left + right) / 2);
     }
 
+    @DebugLog
     @Override
-    public void seekTo(@IntRange(from = 0) int milliseconds) {
+    public void seekTo(@IntRange(from = 0) long milliseconds) {
         if (!listenerMux.isPrepared()) {
             return;
         }
@@ -115,6 +119,7 @@ public class ExoMediaPlayer implements MediaPlayerApi, AudioCapabilitiesReceiver
         return emExoPlayer.getPlayWhenReady();
     }
 
+    @DebugLog
     @Override
     public void start() {
         emExoPlayer.setPlayWhenReady(true);
@@ -122,6 +127,12 @@ public class ExoMediaPlayer implements MediaPlayerApi, AudioCapabilitiesReceiver
         playRequested = true;
     }
 
+    @Override
+    public void setPlayWhenReady(boolean playWhenReady) {
+        emExoPlayer.setPlayWhenReady(playWhenReady);
+    }
+
+    @DebugLog
     @Override
     public void pause() {
         emExoPlayer.setPlayWhenReady(false);
@@ -141,7 +152,7 @@ public class ExoMediaPlayer implements MediaPlayerApi, AudioCapabilitiesReceiver
      */
     @Override
     public boolean restart() {
-        if(!emExoPlayer.restart()) {
+        if (!emExoPlayer.restart()) {
             return false;
         }
 
@@ -152,21 +163,21 @@ public class ExoMediaPlayer implements MediaPlayerApi, AudioCapabilitiesReceiver
     }
 
     @Override
-    public int getDuration() {
+    public long getDuration() {
         if (!listenerMux.isPrepared()) {
             return 0;
         }
 
-        return (int)emExoPlayer.getDuration();
+        return emExoPlayer.getDuration();
     }
 
     @Override
-    public int getCurrentPosition() {
+    public long getCurrentPosition() {
         if (!listenerMux.isPrepared()) {
             return 0;
         }
 
-        return (int)emExoPlayer.getCurrentPosition();
+        return emExoPlayer.getCurrentPosition();
     }
 
     @Override
@@ -199,6 +210,7 @@ public class ExoMediaPlayer implements MediaPlayerApi, AudioCapabilitiesReceiver
         emExoPlayer.setWakeMode(context, mode);
     }
 
+    @DebugLog
     @Override
     public void setListenerMux(EMListenerMux listenerMux) {
         this.listenerMux = listenerMux;
@@ -216,7 +228,7 @@ public class ExoMediaPlayer implements MediaPlayerApi, AudioCapabilitiesReceiver
      * Creates and returns the correct render builder for the specified AudioType and uri.
      *
      * @param renderType The RenderType to use for creating the correct RenderBuilder
-     * @param uri The audio item's Uri
+     * @param uri        The audio item's Uri
      * @return The appropriate RenderBuilder
      */
     protected RenderBuilder getRendererBuilder(MediaSourceType renderType, Uri uri) {

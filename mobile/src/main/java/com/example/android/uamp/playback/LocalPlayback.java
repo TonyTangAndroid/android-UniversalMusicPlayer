@@ -38,6 +38,8 @@ import com.example.android.uamp.model.MusicProviderSource;
 import com.example.android.uamp.utils.LogHelper;
 import com.example.android.uamp.utils.MediaIDHelper;
 
+import hugo.weaving.DebugLog;
+
 import static android.support.v4.media.session.MediaSessionCompat.QueueItem;
 
 /**
@@ -69,7 +71,7 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
     private boolean mPlayOnFocusGain;
     private Callback mCallback;
     private volatile boolean mAudioNoisyReceiverRegistered;
-    private volatile int mCurrentPosition;
+    private volatile long mCurrentPosition;
     private volatile String mCurrentMediaId;
     // Type of audio focus we have:
     private int mAudioFocus = AUDIO_NO_FOCUS_NO_DUCK;
@@ -99,17 +101,19 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
         this.mState = PlaybackStateCompat.STATE_NONE;
     }
 
+    @DebugLog
     @Override
     public void start() {
     }
 
+    @DebugLog
     @Override
     public void stop(boolean notifyListeners) {
         mState = PlaybackStateCompat.STATE_STOPPED;
         if (notifyListeners && mCallback != null) {
             mCallback.onPlaybackStatusChanged(mState);
         }
-        mCurrentPosition = getCurrentStreamPosition();
+        markCurrentPosition(getCurrentStreamPosition());
         // Give up Audio focus
         giveUpAudioFocus();
         unregisterAudioNoisyReceiver();
@@ -138,86 +142,104 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
     }
 
     @Override
-    public int getCurrentStreamPosition() {
+    public long getCurrentStreamPosition() {
         return mMediaPlayer != null ?
                 mMediaPlayer.getCurrentPosition() : mCurrentPosition;
     }
 
+    @DebugLog
     @Override
-    public void setCurrentStreamPosition(int pos) {
-        this.mCurrentPosition = pos;
+    public void setCurrentStreamPosition(long pos) {
+        markCurrentPosition(pos);
     }
 
+    @DebugLog
     @Override
     public void updateLastKnownStreamPosition() {
         if (mMediaPlayer != null) {
-            mCurrentPosition = mMediaPlayer.getCurrentPosition();
+            markCurrentPosition(mMediaPlayer.getCurrentPosition());
         }
     }
 
+    @DebugLog
     @Override
     public void play(QueueItem item) {
-        mPlayOnFocusGain = true;
-        tryToGetAudioFocus();
-        registerAudioNoisyReceiver();
-        String mediaId = item.getDescription().getMediaId();
-        boolean mediaHasChanged = !TextUtils.equals(mediaId, mCurrentMediaId);
-        if (mediaHasChanged) {
-            mCurrentPosition = 0;
-            mCurrentMediaId = mediaId;
-        }
+        try {
+            mPlayOnFocusGain = true;
+            tryToGetAudioFocus();
+            registerAudioNoisyReceiver();
+            String mediaId = item.getDescription().getMediaId();
+            boolean mediaHasChanged = hasMediaChanged(mediaId, mCurrentMediaId);
+            if (mediaHasChanged) {
+                markCurrentPosition(0);
+                mCurrentMediaId = mediaId;
+            }
+            if (shouldConfigMediaPlayerState(mediaHasChanged)) {
+                configMediaPlayerState();
+            } else {
+                mState = PlaybackStateCompat.STATE_STOPPED;
+                relaxResources(false); // release everything except MediaPlayer
+                MediaMetadataCompat track = mMusicProvider.getMusic(
+                        MediaIDHelper.extractMusicIDFromMediaID(item.getDescription().getMediaId()));
 
-        if (mState == PlaybackStateCompat.STATE_PAUSED && !mediaHasChanged && mMediaPlayer != null) {
-            configMediaPlayerState();
-        } else {
-            mState = PlaybackStateCompat.STATE_STOPPED;
-            relaxResources(false); // release everything except MediaPlayer
-            MediaMetadataCompat track = mMusicProvider.getMusic(
-                    MediaIDHelper.extractMusicIDFromMediaID(item.getDescription().getMediaId()));
+                //noinspection ResourceType
+                String source = track.getString(MusicProviderSource.CUSTOM_METADATA_TRACK_SOURCE);
 
-            //noinspection ResourceType
-            String source = track.getString(MusicProviderSource.CUSTOM_METADATA_TRACK_SOURCE);
+                try {
+                    createMediaPlayerIfNeeded();
 
-            try {
-                createMediaPlayerIfNeeded();
+                    mState = PlaybackStateCompat.STATE_BUFFERING;
 
-                mState = PlaybackStateCompat.STATE_BUFFERING;
+                    mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                    mMediaPlayer.setDataSource(mContext, Uri.parse(source));
 
-                mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-                mMediaPlayer.setDataSource(mContext, Uri.parse(source));
+                    // Starts preparing the media player in the background. When
+                    // it's done, it will call our OnPreparedListener (that is,
+                    // the onPrepared() method on this class, since we set the
+                    // listener to 'this'). Until the media player is prepared,
+                    // we *cannot* call start() on it!
+                    mMediaPlayer.prepareAsync();
 
-                // Starts preparing the media player in the background. When
-                // it's done, it will call our OnPreparedListener (that is,
-                // the onPrepared() method on this class, since we set the
-                // listener to 'this'). Until the media player is prepared,
-                // we *cannot* call start() on it!
-                mMediaPlayer.prepareAsync();
+                    // If we are streaming from the internet, we want to hold a
+                    // Wifi lock, which prevents the Wifi radio from going to
+                    // sleep while the song is playing.
+                    mWifiLock.acquire();
 
-                // If we are streaming from the internet, we want to hold a
-                // Wifi lock, which prevents the Wifi radio from going to
-                // sleep while the song is playing.
-                mWifiLock.acquire();
+                    if (mCallback != null) {
+                        mCallback.onPlaybackStatusChanged(mState);
+                    }
 
-                if (mCallback != null) {
-                    mCallback.onPlaybackStatusChanged(mState);
-                }
-
-            } catch (Exception ex) {
-                LogHelper.e(TAG, ex, "Exception playing song");
-                if (mCallback != null) {
-                    mCallback.onError(ex.getMessage());
+                } catch (Exception ex) {
+                    LogHelper.e(TAG, ex, "Exception playing song");
+                    if (mCallback != null) {
+                        mCallback.onError(ex.getMessage());
+                    }
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
+    @DebugLog
+    private boolean hasMediaChanged(String mediaId, String mCurrentMediaId) {
+        return !TextUtils.equals(mediaId, mCurrentMediaId);
+    }
+
+    @DebugLog
+    private boolean shouldConfigMediaPlayerState(boolean mediaHasChanged) {
+        return mState == PlaybackStateCompat.STATE_PAUSED && !mediaHasChanged && mMediaPlayer != null;
+    }
+
+    @DebugLog
     @Override
     public void pause() {
         if (mState == PlaybackStateCompat.STATE_PLAYING) {
             // Pause media player and cancel the 'foreground service' state.
             if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
                 mMediaPlayer.pause();
-                mCurrentPosition = mMediaPlayer.getCurrentPosition();
+                long currentPosition = mMediaPlayer.getCurrentPosition();
+                markCurrentPosition(currentPosition);
             }
             // while paused, retain the MediaPlayer but give up audio focus
             relaxResources(false);
@@ -230,13 +252,14 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
         unregisterAudioNoisyReceiver();
     }
 
+    @DebugLog
     @Override
     public void seekTo(int position) {
-        LogHelper.d(TAG, "seekTo called with ", position);
+        LogHelper.e(TAG, "seekTo called with ", position);
 
         if (mMediaPlayer == null) {
             // If we do not have a current media player, simply update the current position
-            mCurrentPosition = position;
+            markCurrentPosition(position);
         } else {
             if (mMediaPlayer.isPlaying()) {
                 mState = PlaybackStateCompat.STATE_BUFFERING;
@@ -246,6 +269,11 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
                 mCallback.onPlaybackStatusChanged(mState);
             }
         }
+    }
+
+    @DebugLog
+    private void markCurrentPosition(long position) {
+        mCurrentPosition = position;
     }
 
     @Override
@@ -299,6 +327,7 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
      * null, so if you are calling it, you have to do so from a context where
      * you are sure this is the case.
      */
+    @DebugLog
     private void configMediaPlayerState() {
         LogHelper.d(TAG, "configMediaPlayerState. mAudioFocus=", mAudioFocus);
         if (mAudioFocus == AUDIO_NO_FOCUS_NO_DUCK) {
@@ -317,14 +346,18 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
             // If we were playing when we lost focus, we need to resume playing.
             if (mPlayOnFocusGain) {
                 if (mMediaPlayer != null && !mMediaPlayer.isPlaying()) {
-                    LogHelper.d(TAG, "configMediaPlayerState startMediaPlayer. seeking to ",
-                            mCurrentPosition);
-                    if (mCurrentPosition == mMediaPlayer.getCurrentPosition()) {
+
+                    long mediaPlayerCurrentPosition = mMediaPlayer.getCurrentPosition();
+                    long diff = Math.abs(mCurrentPosition - mediaPlayerCurrentPosition);
+                    LogHelper.e(TAG, "diff:" + diff + ", currentPosition:" + mCurrentPosition + ",MediaPlayer Position: ", mediaPlayerCurrentPosition);
+                    if (diff == 0) {
                         mMediaPlayer.start();
                         mState = PlaybackStateCompat.STATE_PLAYING;
                     } else {
+                        LogHelper.e(TAG, "seekTo mCurrentPosition:" + mCurrentPosition);
                         mMediaPlayer.seekTo(mCurrentPosition);
                         mState = PlaybackStateCompat.STATE_BUFFERING;
+                        mMediaPlayer.setPlayWhenReady(true);
                     }
                 }
                 mPlayOnFocusGain = false;
@@ -372,11 +405,12 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
      *
      * @see OnSeekCompletionListener
      */
+    @DebugLog
     @Override
     public void onSeekComplete() {
-        int position = mMediaPlayer.getCurrentPosition();
+        long position = mMediaPlayer.getCurrentPosition();
         LogHelper.d(TAG, "onSeekComplete from MediaPlayer:", position);
-        mCurrentPosition = position;
+        markCurrentPosition(position);
         if (mState == PlaybackStateCompat.STATE_BUFFERING) {
             mMediaPlayer.start();
             mState = PlaybackStateCompat.STATE_PLAYING;
@@ -406,6 +440,7 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
      *
      * @see OnPreparedListener
      */
+    @DebugLog
     @Override
     public void onPrepared() {
         LogHelper.d(TAG, "onPrepared from MediaPlayer");

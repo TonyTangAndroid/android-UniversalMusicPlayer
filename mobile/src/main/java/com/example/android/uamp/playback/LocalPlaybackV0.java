@@ -69,7 +69,7 @@ public class LocalPlaybackV0 implements Playback, AudioManager.OnAudioFocusChang
     private Callback mCallback;
     private final MusicProvider mMusicProvider;
     private volatile boolean mAudioNoisyReceiverRegistered;
-    private volatile int mCurrentPosition;
+    private volatile long mCurrentPosition;
     private volatile String mCurrentMediaId;
 
     // Type of audio focus we have:
@@ -144,7 +144,7 @@ public class LocalPlaybackV0 implements Playback, AudioManager.OnAudioFocusChang
     }
 
     @Override
-    public int getCurrentStreamPosition() {
+    public long getCurrentStreamPosition() {
         return mMediaPlayer != null ?
                 mMediaPlayer.getCurrentPosition() : mCurrentPosition;
     }
@@ -255,7 +255,7 @@ public class LocalPlaybackV0 implements Playback, AudioManager.OnAudioFocusChang
     }
 
     @Override
-    public void setCurrentStreamPosition(int pos) {
+    public void setCurrentStreamPosition(long pos) {
         this.mCurrentPosition = pos;
     }
 
@@ -329,7 +329,7 @@ public class LocalPlaybackV0 implements Playback, AudioManager.OnAudioFocusChang
                         mMediaPlayer.start();
                         mState = PlaybackStateCompat.STATE_PLAYING;
                     } else {
-                        mMediaPlayer.seekTo(mCurrentPosition);
+                        mMediaPlayer.seekTo((int) mCurrentPosition);
                         mState = PlaybackStateCompat.STATE_BUFFERING;
                     }
                 }

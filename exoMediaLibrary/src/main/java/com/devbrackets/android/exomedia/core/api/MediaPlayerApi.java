@@ -52,10 +52,10 @@ public interface MediaPlayerApi {
     void reset();
 
     @IntRange(from = 0)
-    int getDuration();
+    long getDuration();
 
     @IntRange(from = 0)
-    int getCurrentPosition();
+    long getCurrentPosition();
 
     @IntRange(from = 0, to = 100)
     int getBufferedPercent();
@@ -66,9 +66,11 @@ public interface MediaPlayerApi {
 
     void setVolume(@FloatRange(from = 0.0, to = 1.0) float left, @FloatRange(from = 0.0, to = 1.0) float right);
 
-    void seekTo(@IntRange(from = 0) int milliseconds);
+    void seekTo(@IntRange(from = 0) long milliseconds);
 
     void setWakeMode(Context context, int mode);
 
     void setListenerMux(EMListenerMux listenerMux);
+
+    void setPlayWhenReady(boolean playWhenReady);
 }

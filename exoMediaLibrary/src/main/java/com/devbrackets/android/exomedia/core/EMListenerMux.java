@@ -30,6 +30,8 @@ import com.devbrackets.android.exomedia.listener.OnPreparedListener;
 import com.devbrackets.android.exomedia.listener.OnSeekCompletionListener;
 import com.google.android.exoplayer.ExoPlayer;
 
+import hugo.weaving.DebugLog;
+
 /**
  * An internal Listener that implements the listeners for the {@link EMExoPlayer},
  * Android VideoView, and the Android MediaPlayer to output to the correct
@@ -86,6 +88,10 @@ public class EMListenerMux implements ExoPlayerListener, MediaPlayer.OnPreparedL
 
     @Override
     public void onSeekComplete(MediaPlayer mp) {
+        doOnSeekCompleted();
+    }
+
+    private void doOnSeekCompleted() {
         if (seekCompletionListener != null) {
             seekCompletionListener.onSeekComplete();
         }
@@ -106,6 +112,7 @@ public class EMListenerMux implements ExoPlayerListener, MediaPlayer.OnPreparedL
         }
     }
 
+    @DebugLog
     @Override
     public void onStateChanged(boolean playWhenReady, int playbackState) {
         if (playbackState == ExoPlayer.STATE_ENDED) {
@@ -114,14 +121,25 @@ public class EMListenerMux implements ExoPlayerListener, MediaPlayer.OnPreparedL
             if (!notifiedCompleted) {
                 notifyCompletionListener();
             }
-        } else if (playbackState == ExoPlayer.STATE_READY && !notifiedPrepared) {
+        } else if (shouldNotifyPreparedListener(playbackState)) {
             notifyPreparedListener();
         }
 
         //Updates the previewImage
-        if (playbackState == ExoPlayer.STATE_READY && playWhenReady) {
+        if (isReady(playWhenReady, playbackState)) {
             muxNotifier.onPreviewImageStateChanged(false);
+            doOnSeekCompleted();
         }
+    }
+
+    @DebugLog
+    private boolean shouldNotifyPreparedListener(int playbackState) {
+        return playbackState == ExoPlayer.STATE_READY && !notifiedPrepared;
+    }
+
+    @DebugLog
+    private boolean isReady(boolean playWhenReady, int playbackState) {
+        return playbackState == ExoPlayer.STATE_READY && playWhenReady;
     }
 
     @Override

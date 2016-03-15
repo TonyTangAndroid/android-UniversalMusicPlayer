@@ -60,6 +60,9 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
     private static final int AUDIO_NO_FOCUS_CAN_DUCK = 1;
     // we have full audio focus
     private static final int AUDIO_FOCUSED = 2;
+    //to decide whether the play need to seek before resuming playback or continue the playback directly.
+    //All these code is added due to the issue here https://github.com/google/ExoPlayer/issues/1040
+    private static final long THRESHOLD_IN_MILLISECONDS = 200;
 
     private final Context mContext;
     private final WifiManager.WifiLock mWifiLock;
@@ -268,6 +271,7 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
         }
     }
 
+    @DebugLog
     private void markCurrentPosition(long position) {
         mCurrentPosition = position;
     }
@@ -347,10 +351,12 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
                     long diff = Math.abs(mCurrentPosition - mediaPlayerCurrentPosition);
                     LogHelper.e(TAG, "diff:" + diff + ", currentPosition:" + mCurrentPosition + ",MediaPlayer Position: ", mediaPlayerCurrentPosition);
                     /**
-                     It will rarely be 0 due to the issue from ExoPlayer Library. https://github.com/google/ExoPlayer/issues/1040,
+                     The diff will rarely be 0 due to the issue from ExoPlayer Library. https://github.com/google/ExoPlayer/issues/1040,
                      which means that whenever the player is paused and resumed again, it will always execute seeking first.
-                     But since the ExoPlayer has been set to setPlayWhenReady to false when we pause it, we need to set it to true so that when the playback is ready,
-                     it will actually play.
+                     But since the ExoPlayer has been set to setPlayWhenReady to false when we pause it, we need to set it to true so that
+                     when the playback is ready, it will actually play. But we should not stop here as we could minimize the frequency of seeking option.
+                     Obviously, to seek a new position which the difference between the original position is less than certain value, saying 200 milliseconds,
+                     will be meaningless. So we could resume the playback directly in this case.
                      *
                      */
                     if (diff == 0) {
@@ -358,8 +364,12 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
                         mState = PlaybackStateCompat.STATE_PLAYING;
                     } else {
                         //XXX
-                        LogHelper.e(TAG, "seekTo mCurrentPosition:" + mCurrentPosition);
-                        mMediaPlayer.seekTo(mCurrentPosition);
+                        if (diff > THRESHOLD_IN_MILLISECONDS) {
+                            LogHelper.e(TAG, "seekTo new position:" + mediaPlayerCurrentPosition);
+                            mMediaPlayer.seekTo(mediaPlayerCurrentPosition);
+                        } else {
+                            LogHelper.e(TAG, "resume playback from:" + mCurrentPosition);
+                        }
                         mState = PlaybackStateCompat.STATE_BUFFERING;
                         mMediaPlayer.setPlayWhenReady(true);
                         //xxx question here: what if we setPlayWhenReady before seekTo?

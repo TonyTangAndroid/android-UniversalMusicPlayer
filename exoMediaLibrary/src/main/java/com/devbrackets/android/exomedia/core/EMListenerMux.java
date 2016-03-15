@@ -130,12 +130,17 @@ public class EMListenerMux implements ExoPlayerListener, MediaPlayer.OnPreparedL
             notifyPreparedListener();
         }
 
-        //Updates the previewImage
-        if (isReady(playWhenReady, playbackState)) {
+        //resume the playback if necessary
+        if (shouldResumePlayback(playWhenReady, playbackState)) {
             muxNotifier.onPreviewImageStateChanged(false);
             if (BuildConfig.DEBUG) {
                 Log.e("EMListenerMux", "call doOnSeekCompleted() in onStateChanged");
             }
+            //Normally we should not call on SeekCompletion callback here as it does not necessary means
+            // that when the exoplayer state changes to be ready is initialized by on seek completed.
+            // But due to the issue  https://github.com/google/ExoPlayer/issues/1040, all we want to achieve
+            // is to resume the playback when it could, which is exactly when on seek callback do.
+            //This is a hacker way to solve this issue. But so far, I do not find a better solution.
             doOnSeekCompleted();
 
         }
@@ -145,7 +150,7 @@ public class EMListenerMux implements ExoPlayerListener, MediaPlayer.OnPreparedL
         return playbackState == ExoPlayer.STATE_READY && !notifiedPrepared;
     }
 
-    private boolean isReady(boolean playWhenReady, int playbackState) {
+    private boolean shouldResumePlayback(boolean playWhenReady, int playbackState) {
         return playbackState == ExoPlayer.STATE_READY && playWhenReady;
     }
 

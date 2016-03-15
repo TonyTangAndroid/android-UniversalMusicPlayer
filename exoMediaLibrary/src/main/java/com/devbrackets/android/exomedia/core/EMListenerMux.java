@@ -20,7 +20,9 @@ import android.media.MediaPlayer;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
+import com.devbrackets.android.exomedia.BuildConfig;
 import com.devbrackets.android.exomedia.core.exoplayer.EMExoPlayer;
 import com.devbrackets.android.exomedia.core.listener.ExoPlayerListener;
 import com.devbrackets.android.exomedia.listener.OnBufferUpdateListener;
@@ -86,11 +88,13 @@ public class EMListenerMux implements ExoPlayerListener, MediaPlayer.OnPreparedL
         return errorListener != null && errorListener.onError();
     }
 
+    @DebugLog
     @Override
     public void onSeekComplete(MediaPlayer mp) {
         doOnSeekCompleted();
     }
 
+    @DebugLog
     private void doOnSeekCompleted() {
         if (seekCompletionListener != null) {
             seekCompletionListener.onSeekComplete();
@@ -115,6 +119,7 @@ public class EMListenerMux implements ExoPlayerListener, MediaPlayer.OnPreparedL
     @DebugLog
     @Override
     public void onStateChanged(boolean playWhenReady, int playbackState) {
+        //XXX
         if (playbackState == ExoPlayer.STATE_ENDED) {
             muxNotifier.onMediaPlaybackEnded();
 
@@ -128,16 +133,18 @@ public class EMListenerMux implements ExoPlayerListener, MediaPlayer.OnPreparedL
         //Updates the previewImage
         if (isReady(playWhenReady, playbackState)) {
             muxNotifier.onPreviewImageStateChanged(false);
+            if (BuildConfig.DEBUG) {
+                Log.e("EMListenerMux", "call doOnSeekCompleted() in onStateChanged");
+            }
             doOnSeekCompleted();
+
         }
     }
 
-    @DebugLog
     private boolean shouldNotifyPreparedListener(int playbackState) {
         return playbackState == ExoPlayer.STATE_READY && !notifiedPrepared;
     }
 
-    @DebugLog
     private boolean isReady(boolean playWhenReady, int playbackState) {
         return playbackState == ExoPlayer.STATE_READY && playWhenReady;
     }

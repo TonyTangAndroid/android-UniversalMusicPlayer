@@ -104,7 +104,6 @@ public class ExoMediaPlayer implements MediaPlayerApi, AudioCapabilitiesReceiver
         emExoPlayer.setVolume((left + right) / 2);
     }
 
-    @DebugLog
     @Override
     public void seekTo(@IntRange(from = 0) long milliseconds) {
         if (!listenerMux.isPrepared()) {
@@ -119,7 +118,6 @@ public class ExoMediaPlayer implements MediaPlayerApi, AudioCapabilitiesReceiver
         return emExoPlayer.getPlayWhenReady();
     }
 
-    @DebugLog
     @Override
     public void start() {
         emExoPlayer.setPlayWhenReady(true);

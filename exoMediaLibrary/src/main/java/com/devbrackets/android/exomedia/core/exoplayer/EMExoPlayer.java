@@ -75,45 +75,31 @@ public class EMExoPlayer implements
         DashChunkSource.EventListener,
         MetadataTrackRenderer.MetadataRenderer<List<Id3Frame>>,
         TextRenderer {
-    private static final String TAG = "EMExoPlayer";
     public static final int DISABLED_TRACK = -1;
-
     public static final int RENDER_COUNT = 4;
     public static final int RENDER_VIDEO = 0;
     public static final int RENDER_AUDIO = 1;
     public static final int RENDER_CLOSED_CAPTION = 2;
     public static final int RENDER_TIMED_METADATA = 3;
-
     public static final int BUFFER_LENGTH_MIN = 1000;
     public static final int REBUFFER_LENGTH_MIN = 5000;
-
-    public enum RenderBuildingState {
-        IDLE,
-        BUILDING,
-        BUILT
-    }
-
-    private RenderBuilder rendererBuilder;
+    private static final String TAG = "EMExoPlayer";
     private final ExoPlayer player;
     private final PlayerControl playerControl;
     private final Handler mainHandler;
     private final CopyOnWriteArrayList<ExoPlayerListener> listeners;
-
+    private RenderBuilder rendererBuilder;
     private RenderBuildingState rendererBuildingState;
     private int lastReportedPlaybackState;
     private boolean lastReportedPlayWhenReady;
-
     private boolean prepared = false;
-
     private Surface surface;
     private TrackRenderer videoRenderer;
     private TrackRenderer audioRenderer;
-
     private CaptionListener captionListener;
     private Id3MetadataListener id3MetadataListener;
     private InternalErrorListener internalErrorListener;
     private InfoListener infoListener;
-
     private PowerManager.WakeLock wakeLock = null;
 
     public EMExoPlayer() {
@@ -172,13 +158,13 @@ public class EMExoPlayer implements
         id3MetadataListener = listener;
     }
 
+    public Surface getSurface() {
+        return surface;
+    }
+
     public void setSurface(Surface surface) {
         this.surface = surface;
         pushSurface(false);
-    }
-
-    public Surface getSurface() {
-        return surface;
     }
 
     public void blockingClearSurface() {
@@ -264,26 +250,19 @@ public class EMExoPlayer implements
         player.stop();
     }
 
-    @DebugLog
-    public void setPlayWhenReady(boolean playWhenReady) {
-        player.setPlayWhenReady(playWhenReady);
-        stayAwake(playWhenReady);
-    }
-
-    @DebugLog
     public void seekTo(long positionMs) {
         player.seekTo(positionMs);
     }
 
-  /**
-   * Seeks to the beginning of the media, and plays it. This method will not succeed if playback state is not {@code ExoPlayer.STATE_IDLE} or {@code ExoPlayer.STATE_ENDED}.
-   *
-   * @return {@code true} if the media was successfully restarted, otherwise {@code false}
-   */
-  @DebugLog
-  public boolean restart() {
+    /**
+     * Seeks to the beginning of the media, and plays it. This method will not succeed if playback state is not {@code ExoPlayer.STATE_IDLE} or {@code ExoPlayer.STATE_ENDED}.
+     *
+     * @return {@code true} if the media was successfully restarted, otherwise {@code false}
+     */
+    @DebugLog
+    public boolean restart() {
         int playbackState = getPlaybackState();
-        if(playbackState != ExoPlayer.STATE_IDLE && playbackState != ExoPlayer.STATE_ENDED) {
+        if (playbackState != ExoPlayer.STATE_IDLE && playbackState != ExoPlayer.STATE_ENDED) {
             return false;
         }
 
@@ -318,7 +297,7 @@ public class EMExoPlayer implements
 
     public int getAudioSessionId() {
         if (audioRenderer != null) {
-            return ((EMMediaCodecAudioTrackRenderer)audioRenderer).getAudioSessionId();
+            return ((EMMediaCodecAudioTrackRenderer) audioRenderer).getAudioSessionId();
         }
 
         return 0;
@@ -340,6 +319,12 @@ public class EMExoPlayer implements
         return player.getPlayWhenReady();
     }
 
+    @DebugLog
+    public void setPlayWhenReady(boolean playWhenReady) {
+        player.setPlayWhenReady(playWhenReady);
+        stayAwake(playWhenReady);
+    }
+
     public Looper getPlaybackLooper() {
         return player.getPlaybackLooper();
     }
@@ -357,7 +342,7 @@ public class EMExoPlayer implements
      * By default, no attempt is made to keep the device awake during playback.
      *
      * @param context the Context to use
-     * @param mode the power/wake mode to set
+     * @param mode    the power/wake mode to set
      * @see android.os.PowerManager
      */
     public void setWakeMode(Context context, int mode) {
@@ -566,7 +551,6 @@ public class EMExoPlayer implements
         //Purposefully left blank
     }
 
-    @DebugLog
     private void reportPlayerState() {
         boolean playWhenReady = player.getPlayWhenReady();
         int playbackState = getPlaybackState();
@@ -591,5 +575,11 @@ public class EMExoPlayer implements
         } else {
             player.sendMessage(videoRenderer, MediaCodecVideoTrackRenderer.MSG_SET_SURFACE, surface);
         }
+    }
+
+    public enum RenderBuildingState {
+        IDLE,
+        BUILDING,
+        BUILT
     }
 }

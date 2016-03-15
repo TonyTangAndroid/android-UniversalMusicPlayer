@@ -161,7 +161,6 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
         }
     }
 
-    @DebugLog
     @Override
     public void play(QueueItem item) {
         try {
@@ -221,12 +220,10 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
         }
     }
 
-    @DebugLog
     private boolean hasMediaChanged(String mediaId, String mCurrentMediaId) {
         return !TextUtils.equals(mediaId, mCurrentMediaId);
     }
 
-    @DebugLog
     private boolean shouldConfigMediaPlayerState(boolean mediaHasChanged) {
         return mState == PlaybackStateCompat.STATE_PAUSED && !mediaHasChanged && mMediaPlayer != null;
     }
@@ -271,7 +268,6 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
         }
     }
 
-    @DebugLog
     private void markCurrentPosition(long position) {
         mCurrentPosition = position;
     }
@@ -350,14 +346,23 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
                     long mediaPlayerCurrentPosition = mMediaPlayer.getCurrentPosition();
                     long diff = Math.abs(mCurrentPosition - mediaPlayerCurrentPosition);
                     LogHelper.e(TAG, "diff:" + diff + ", currentPosition:" + mCurrentPosition + ",MediaPlayer Position: ", mediaPlayerCurrentPosition);
+                    /**
+                     It will rarely be 0 due to the issue from ExoPlayer Library. https://github.com/google/ExoPlayer/issues/1040,
+                     which means that whenever the player is paused and resumed again, it will always execute seeking first.
+                     But since the ExoPlayer has been set to setPlayWhenReady to false when we pause it, we need to set it to true so that when the playback is ready,
+                     it will actually play.
+                     *
+                     */
                     if (diff == 0) {
                         mMediaPlayer.start();
                         mState = PlaybackStateCompat.STATE_PLAYING;
                     } else {
+                        //XXX
                         LogHelper.e(TAG, "seekTo mCurrentPosition:" + mCurrentPosition);
                         mMediaPlayer.seekTo(mCurrentPosition);
                         mState = PlaybackStateCompat.STATE_BUFFERING;
                         mMediaPlayer.setPlayWhenReady(true);
+                        //xxx question here: what if we setPlayWhenReady before seekTo?
                     }
                 }
                 mPlayOnFocusGain = false;

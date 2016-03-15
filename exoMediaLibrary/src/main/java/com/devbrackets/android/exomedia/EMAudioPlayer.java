@@ -166,7 +166,6 @@ public class EMAudioPlayer {
      * Starts the playback for the audio item specified in {@link #setDataSource(android.content.Context, android.net.Uri)}.
      * This should be called after the AudioPlayer is correctly prepared (see {@link #setOnPreparedListener(OnPreparedListener)})
      */
-    @DebugLog
     public void start() {
         mediaPlayerImpl.start();
     }

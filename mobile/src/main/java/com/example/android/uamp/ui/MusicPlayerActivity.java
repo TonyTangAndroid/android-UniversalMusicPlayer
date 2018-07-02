@@ -19,6 +19,7 @@ import android.app.FragmentTransaction;
 import android.app.SearchManager;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.session.MediaControllerCompat;
@@ -110,11 +111,12 @@ public class MusicPlayerActivity extends BaseActivity
 
     private void startFullScreenActivityIfNeeded(Intent intent) {
         if (intent != null && intent.getBooleanExtra(EXTRA_START_FULLSCREEN, false)) {
+            Parcelable parcelableExtra = intent.getParcelableExtra(EXTRA_CURRENT_MEDIA_DESCRIPTION);
             Intent fullScreenIntent = new Intent(this, FullScreenPlayerActivity.class)
                 .setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP |
                     Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 .putExtra(EXTRA_CURRENT_MEDIA_DESCRIPTION,
-                    intent.getParcelableExtra(EXTRA_CURRENT_MEDIA_DESCRIPTION));
+                        parcelableExtra);
             startActivity(fullScreenIntent);
         }
     }
